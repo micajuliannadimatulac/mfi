@@ -1,0 +1,11 @@
+{
+  "name": "Mahintana Foundation, Inc.",
+  "short_name": "Mahintana",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#74B2F2",
+  "theme_color": "#2F3192",
+  "description": "Mahintana Foundation auth UI",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false
+}
