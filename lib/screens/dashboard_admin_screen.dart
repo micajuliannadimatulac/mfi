@@ -720,22 +720,7 @@ class _HeroCard extends StatelessWidget {
             child: Image.asset(
               'assets/images/matutum2.png',
               fit: BoxFit.cover,
-              alignment: Alignment.bottomCenter,
-            ),
-          ),
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.center,
-                  colors: [
-                    Colors.white.withOpacity(0.98),
-                    Colors.white.withOpacity(0.86),
-                    Colors.white.withOpacity(0.08),
-                  ],
-                ),
-              ),
+              alignment: const Alignment(0.55, 0.85),
             ),
           ),
           Positioned(

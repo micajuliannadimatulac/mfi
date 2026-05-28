@@ -23,13 +23,16 @@ class AuthBackground extends StatelessWidget {
 
                 return Align(
                   alignment: Alignment.bottomCenter,
-                  child: Image.asset(
-                    AppAssets.matutum,
-                    width: constraints.maxWidth,
-                    height: narrow ? constraints.maxHeight * 0.48 : null,
-                    fit: narrow ? BoxFit.cover : BoxFit.fitWidth,
-                    alignment: Alignment.bottomCenter,
-                    errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                  child: Transform.translate(
+                    offset: const Offset(0, 120), // increase to move lower
+                    child: Image.asset(
+                      AppAssets.matutum,
+                      width: constraints.maxWidth,
+                      height: narrow ? constraints.maxHeight * 0.48 : null,
+                      fit: narrow ? BoxFit.cover : BoxFit.fitWidth,
+                      alignment: Alignment.bottomCenter,
+                      errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                    ),
                   ),
                 );
               },
