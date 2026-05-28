@@ -5,7 +5,7 @@ import 'app_styles.dart';
 class DashboardStyles {
   static const double sidebarWidth = 78;
   static const double expandedSidebarWidth = 300;
-  static const double contentMaxWidth = 1400;
+  static const double contentMaxWidth = 1200;
 
   static const Color green = Color(0xFF379543);
   static const Color yellow = Color(0xFFD7C42E);
