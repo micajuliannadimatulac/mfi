@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../state/sidebar_state.dart';
 import '../styles/app_styles.dart';
 import '../styles/dashboard_styles.dart';
 import '../widgets/auth_buttons.dart';
@@ -12,8 +13,6 @@ class DashboardAdminScreen extends StatefulWidget {
 }
 
 class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
-  bool _sidebarExpanded = false;
-
   final List<String> _programs = [
     'IBG',
     'DSS',
@@ -175,12 +174,6 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
         activities: updatedActivities,
       );
     }).toList();
-  }
-
-  void _toggleSidebar() {
-    setState(() {
-      _sidebarExpanded = !_sidebarExpanded;
-    });
   }
 
   void _selectProgram(String program) {
@@ -367,60 +360,65 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
     return Scaffold(
       body: Container(
         decoration: DashboardStyles.pageBackground,
-        child: Row(
-          children: [
-            _DashboardSidebar(
-              isExpanded: _sidebarExpanded,
-              onToggle: _toggleSidebar,
-            ),
-            Expanded(
-              child: SafeArea(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(58, 28, 50, 60),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        maxWidth: DashboardStyles.contentMaxWidth,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const _DashboardHeader(),
-                          const SizedBox(height: 28),
-                          const _HeroCard(),
-                          const SizedBox(height: 40),
-                          const _OverviewTitle(),
-                          const SizedBox(height: 28),
-                          _ProgramActionRow(
-                            programs: _programs,
-                            selectedProgram: _selectedProgram,
-                            onProgramSelected: _selectProgram,
-                            onManagePressed: _showManageProgramsDialog,
+        child: ValueListenableBuilder<bool>(
+          valueListenable: SidebarState.isExpanded,
+          builder: (context, isExpanded, child) {
+            return Row(
+              children: [
+                _DashboardSidebar(
+                  isExpanded: isExpanded,
+                  onToggle: SidebarState.toggle,
+                ),
+                Expanded(
+                  child: SafeArea(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(58, 28, 50, 60),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            maxWidth: DashboardStyles.contentMaxWidth,
                           ),
-                          const SizedBox(height: 30),
-                          _OverviewCards(
-                            selectedProgram: _selectedProgram,
-                            completionPercent: _completionPercent,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const _DashboardHeader(),
+                              const SizedBox(height: 28),
+                              const _HeroCard(),
+                              const SizedBox(height: 40),
+                              const _OverviewTitle(),
+                              const SizedBox(height: 28),
+                              _ProgramActionRow(
+                                programs: _programs,
+                                selectedProgram: _selectedProgram,
+                                onProgramSelected: _selectProgram,
+                                onManagePressed: _showManageProgramsDialog,
+                              ),
+                              const SizedBox(height: 30),
+                              _OverviewCards(
+                                selectedProgram: _selectedProgram,
+                                completionPercent: _completionPercent,
+                              ),
+                              const SizedBox(height: 32),
+                              _ProjectsPanel(
+                                selectedProgram: _selectedProgram,
+                                selectedProjectIndex: _selectedProjectIndex,
+                                projects: _currentProjects,
+                                activities: _currentActivities,
+                                resetVersion: _listResetVersion,
+                                onProjectSelected: _selectProject,
+                                onManageProjects: _showManageProjectsDialog,
+                                onManageActivities: _showManageActivitiesDialog,
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 32),
-                          _ProjectsPanel(
-                            selectedProgram: _selectedProgram,
-                            selectedProjectIndex: _selectedProjectIndex,
-                            projects: _currentProjects,
-                            activities: _currentActivities,
-                            resetVersion: _listResetVersion,
-                            onProjectSelected: _selectProject,
-                            onManageProjects: _showManageProjectsDialog,
-                            onManageActivities: _showManageActivitiesDialog,
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         ),
       ),
     );
@@ -483,6 +481,7 @@ class _DashboardSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
+      clipBehavior: Clip.hardEdge,
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOut,
       width: isExpanded
@@ -550,7 +549,12 @@ class _DashboardSidebar extends StatelessWidget {
             label: 'Account Settings',
             isExpanded: isExpanded,
             selected: false,
-            onTap: () {},
+            onTap: () {
+              Navigator.pushReplacementNamed(
+                context,
+                '/settings-admin',
+              );
+            },
           ),
           _SidebarItem(
             icon: Icons.wb_sunny_outlined,
@@ -1103,7 +1107,8 @@ class _ManageActivitiesDialog extends StatefulWidget {
   final ValueChanged<List<_DashboardActivity>> onActivitiesChanged;
 
   @override
-  State<_ManageActivitiesDialog> createState() => _ManageActivitiesDialogState();
+  State<_ManageActivitiesDialog> createState() =>
+      _ManageActivitiesDialogState();
 }
 
 class _ManageActivitiesDialogState extends State<_ManageActivitiesDialog> {
@@ -1810,7 +1815,9 @@ class _CompletionCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            selectedProgram.isEmpty ? 'No Program' : 'Total $selectedProgram Progress',
+            selectedProgram.isEmpty
+                ? 'No Program'
+                : 'Total $selectedProgram Progress',
             style: DashboardStyles.cardTitle,
           ),
           const SizedBox(height: 20),
@@ -2004,8 +2011,7 @@ class _CalendarCardState extends State<_CalendarCard> {
 
     return List.generate(42, (index) {
       final DateTime date = gridStart.add(Duration(days: index));
-      final bool isCurrentMonth =
-          date.month == _displayedMonth.month &&
+      final bool isCurrentMonth = date.month == _displayedMonth.month &&
           date.year == _displayedMonth.year;
 
       return _CalendarDay(

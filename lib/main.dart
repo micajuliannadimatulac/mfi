@@ -5,11 +5,19 @@ import 'screens/index_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/dashboard_admin_screen.dart';
+import 'screens/settings_admin_screen.dart';
+import 'state/blocked_users_state.dart';
 import 'styles/app_styles.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   GoogleFonts.config.allowRuntimeFetching = true;
+
+  await BlockedUsersState.init(
+    defaultBlockedEmails: <String>{
+      'jmmcasia3@addu.edu.ph',
+    },
+  );
 
   runApp(const MahintanaApp());
 }
@@ -48,6 +56,10 @@ class MahintanaApp extends StatelessWidget {
 
           case '/dashboard-admin':
             screen = const DashboardAdminScreen();
+            break;
+
+          case '/settings-admin':
+            screen = const SettingsAdminScreen();
             break;
 
           case '/':
