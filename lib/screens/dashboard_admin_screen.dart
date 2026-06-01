@@ -137,6 +137,8 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
         title: '$program Project $projectNumber',
         description: _projectDescriptionFor(program, projectNumber),
         program: program,
+        scheduleFrom: 'Jun ${projectNumber.toString().padLeft(2, '0')}, 2026',
+        scheduleTo: 'Jun ${(projectNumber + 14).toString().padLeft(2, '0')}, 2026',
         percent: projectPercents[index],
         activities: _defaultActivitiesFor(
           program,
@@ -600,6 +602,8 @@ class _DashboardProject {
     required this.title,
     required this.description,
     required this.program,
+    this.scheduleFrom = 'Not set',
+    this.scheduleTo = 'Not set',
     required this.percent,
     required this.activities,
   });
@@ -607,6 +611,8 @@ class _DashboardProject {
   final String title;
   final String description;
   final String program;
+  final String scheduleFrom;
+  final String scheduleTo;
   final int percent;
   final List<_DashboardActivity> activities;
 
@@ -614,6 +620,8 @@ class _DashboardProject {
     String? title,
     String? description,
     String? program,
+    String? scheduleFrom,
+    String? scheduleTo,
     int? percent,
     List<_DashboardActivity>? activities,
   }) {
@@ -621,6 +629,8 @@ class _DashboardProject {
       title: title ?? this.title,
       description: description ?? this.description,
       program: program ?? this.program,
+      scheduleFrom: scheduleFrom ?? this.scheduleFrom,
+      scheduleTo: scheduleTo ?? this.scheduleTo,
       percent: percent ?? this.percent,
       activities: activities ?? this.activities,
     );
@@ -764,13 +774,25 @@ class _DashboardSidebar extends StatelessWidget {
           ),
           _SidebarItem(
             icon: Icons.folder_open_rounded,
-            label: 'Projects',
+            label: 'Projects & Activities',
             isExpanded: isExpanded,
             selected: false,
             onTap: () {
               Navigator.pushReplacementNamed(
                 context,
                 '/projects-admin',
+              );
+            },
+          ),
+          _SidebarItem(
+            icon: Icons.calendar_month_rounded,
+            label: 'Calendar',
+            isExpanded: isExpanded,
+            selected: false,
+            onTap: () {
+              Navigator.pushReplacementNamed(
+                context,
+                '/calendar-admin',
               );
             },
           ),
@@ -1651,6 +1673,8 @@ class _ManageProjectsDialogState extends State<_ManageProjectsDialog> {
               ? 'No description added yet.'
               : draft.description.trim(),
           program: draft.program,
+          scheduleFrom: draft.scheduleFrom,
+          scheduleTo: draft.scheduleTo,
           percent: 0,
           activities: const [],
         ),
@@ -1674,6 +1698,8 @@ class _ManageProjectsDialogState extends State<_ManageProjectsDialog> {
           initialProgram: oldProject.program.isEmpty
               ? widget.program
               : oldProject.program,
+          initialScheduleFrom: oldProject.scheduleFrom,
+          initialScheduleTo: oldProject.scheduleTo,
         );
       },
     );
@@ -1692,6 +1718,8 @@ class _ManageProjectsDialogState extends State<_ManageProjectsDialog> {
               ? 'No description added yet.'
               : draft.description.trim(),
           program: draft.program,
+          scheduleFrom: draft.scheduleFrom,
+          scheduleTo: draft.scheduleTo,
         );
       }
     });
@@ -2669,11 +2697,15 @@ class _ProjectDraft {
     required this.title,
     required this.description,
     required this.program,
+    required this.scheduleFrom,
+    required this.scheduleTo,
   });
 
   final String title;
   final String description;
   final String program;
+  final String scheduleFrom;
+  final String scheduleTo;
 }
 
 class _ProjectDetailsDialog extends StatefulWidget {
@@ -2684,6 +2716,8 @@ class _ProjectDetailsDialog extends StatefulWidget {
     required this.initialProgram,
     this.initialTitle = '',
     this.initialDescription = '',
+    this.initialScheduleFrom = '',
+    this.initialScheduleTo = '',
   });
 
   final String title;
@@ -2692,6 +2726,8 @@ class _ProjectDetailsDialog extends StatefulWidget {
   final String initialProgram;
   final String initialTitle;
   final String initialDescription;
+  final String initialScheduleFrom;
+  final String initialScheduleTo;
 
   @override
   State<_ProjectDetailsDialog> createState() => _ProjectDetailsDialogState();
@@ -2700,6 +2736,8 @@ class _ProjectDetailsDialog extends StatefulWidget {
 class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
+  late final TextEditingController _scheduleFromController;
+  late final TextEditingController _scheduleToController;
   late String _selectedProgram;
 
   @override
@@ -2709,6 +2747,12 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
     _titleController = TextEditingController(text: widget.initialTitle);
     _descriptionController = TextEditingController(
       text: widget.initialDescription,
+    );
+    _scheduleFromController = TextEditingController(
+      text: widget.initialScheduleFrom,
+    );
+    _scheduleToController = TextEditingController(
+      text: widget.initialScheduleTo,
     );
     _selectedProgram = widget.programs.contains(widget.initialProgram)
         ? widget.initialProgram
@@ -2721,13 +2765,17 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _scheduleFromController.dispose();
+    _scheduleToController.dispose();
     super.dispose();
   }
 
   void _submit() {
     final String title = _titleController.text.trim();
 
-    if (title.isEmpty || _selectedProgram.isEmpty) {
+    if (title.isEmpty || _selectedProgram.isEmpty ||
+        _scheduleFromController.text.trim().isEmpty ||
+        _scheduleToController.text.trim().isEmpty) {
       return;
     }
 
@@ -2737,6 +2785,8 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
         title: title,
         description: _descriptionController.text.trim(),
         program: _selectedProgram,
+        scheduleFrom: _scheduleFromController.text.trim(),
+        scheduleTo: _scheduleToController.text.trim(),
       ),
     );
   }
@@ -2783,24 +2833,6 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
                     color: AppColors.blue,
                   ),
                   decoration: _fieldDecoration(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              _fieldLabel('Description'),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 84,
-                child: TextField(
-                  controller: _descriptionController,
-                  maxLines: 3,
-                  textInputAction: TextInputAction.newline,
-                  style: AppText.dmSans(
-                    fontSize: 15,
-                    color: AppColors.blue,
-                  ),
-                  decoration: _fieldDecoration(
-                    hintText: 'Add a short project description',
-                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -2851,6 +2883,42 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
                   ),
                 ),
               ),
+              const SizedBox(height: 16),
+              _fieldLabel('Description'),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 84,
+                child: TextField(
+                  controller: _descriptionController,
+                  maxLines: 3,
+                  textInputAction: TextInputAction.newline,
+                  style: AppText.dmSans(
+                    fontSize: 15,
+                    color: AppColors.blue,
+                  ),
+                  decoration: _fieldDecoration(
+                    hintText: 'Add a short project description',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: _dateTextField(
+                      label: 'Schedule From*',
+                      controller: _scheduleFromController,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: _dateTextField(
+                      label: 'Schedule To*',
+                      controller: _scheduleToController,
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 32),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -2889,6 +2957,81 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
         ),
       ),
     );
+  }
+
+
+  Future<void> _pickProjectDate(TextEditingController controller) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2035),
+    );
+
+    if (picked == null) {
+      return;
+    }
+
+    controller.text = _formatProjectDate(picked);
+  }
+
+  Widget _dateTextField({
+    required String label,
+    required TextEditingController controller,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _fieldLabel(label),
+        const SizedBox(height: 8),
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: () => _pickProjectDate(controller),
+            child: AbsorbPointer(
+              child: SizedBox(
+                height: 46,
+                child: TextField(
+                  controller: controller,
+                  style: AppText.dmSans(
+                    fontSize: 15,
+                    color: AppColors.blue,
+                  ),
+                  decoration: _fieldDecoration(
+                    hintText: 'Select date',
+                  ).copyWith(
+                    suffixIcon: const Icon(
+                      Icons.calendar_month_rounded,
+                      color: AppColors.blue,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatProjectDate(DateTime date) {
+    const List<String> months = <String>[
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
   Widget _fieldLabel(String text) {

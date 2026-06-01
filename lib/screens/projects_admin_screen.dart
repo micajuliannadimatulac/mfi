@@ -240,6 +240,8 @@ class _ProjectsAdminScreenState extends State<ProjectsAdminScreen> {
             program: program,
             status: _statusForProgress(progress),
             description: _projectDescriptionFor(program, projectNumber),
+            scheduleFrom: now.subtract(Duration(days: 24 - order)),
+            scheduleTo: now.add(Duration(days: 6 + order)),
             progress: progress,
             dateAdded: now.subtract(Duration(days: 32 - order)),
             lastAccessed: now.subtract(Duration(hours: 3 + order)),
@@ -388,6 +390,8 @@ class _ProjectsAdminScreenState extends State<ProjectsAdminScreen> {
           description: draft.description.trim().isEmpty
               ? 'No description added yet.'
               : draft.description.trim(),
+          scheduleFrom: draft.scheduleFrom,
+          scheduleTo: draft.scheduleTo,
           progress: 0,
           dateAdded: now,
           lastAccessed: now,
@@ -408,6 +412,8 @@ class _ProjectsAdminScreenState extends State<ProjectsAdminScreen> {
           initialTitle: oldProject.title,
           initialDescription: oldProject.description,
           initialProgram: oldProject.program,
+          initialScheduleFrom: oldProject.scheduleFrom,
+          initialScheduleTo: oldProject.scheduleTo,
         );
       },
     );
@@ -426,6 +432,8 @@ class _ProjectsAdminScreenState extends State<ProjectsAdminScreen> {
           description: draft.description.trim().isEmpty
               ? 'No description added yet.'
               : draft.description.trim(),
+          scheduleFrom: draft.scheduleFrom,
+          scheduleTo: draft.scheduleTo,
         );
       }
     });
@@ -649,10 +657,19 @@ class _ProjectsAdminScreenState extends State<ProjectsAdminScreen> {
           ),
           _sidebarItem(
             icon: Icons.folder_open_rounded,
-            label: 'Projects',
+            label: 'Projects & Activities',
             selected: true,
             isExpanded: isExpanded,
             onTap: () {},
+          ),
+          _sidebarItem(
+            icon: Icons.calendar_month_rounded,
+            label: 'Calendar',
+            selected: false,
+            isExpanded: isExpanded,
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/calendar-admin');
+            },
           ),
           _sidebarItem(
             icon: Icons.person,
@@ -1249,6 +1266,8 @@ class _ProjectItem {
     required this.program,
     required this.status,
     required this.description,
+    required this.scheduleFrom,
+    required this.scheduleTo,
     required this.progress,
     required this.dateAdded,
     required this.lastAccessed,
@@ -1258,6 +1277,8 @@ class _ProjectItem {
   final String program;
   final String status;
   final String description;
+  final DateTime scheduleFrom;
+  final DateTime scheduleTo;
   final int progress;
   final DateTime dateAdded;
   DateTime lastAccessed;
@@ -1267,6 +1288,8 @@ class _ProjectItem {
     String? program,
     String? status,
     String? description,
+    DateTime? scheduleFrom,
+    DateTime? scheduleTo,
     int? progress,
     DateTime? dateAdded,
     DateTime? lastAccessed,
@@ -1276,6 +1299,8 @@ class _ProjectItem {
       program: program ?? this.program,
       status: status ?? this.status,
       description: description ?? this.description,
+      scheduleFrom: scheduleFrom ?? this.scheduleFrom,
+      scheduleTo: scheduleTo ?? this.scheduleTo,
       progress: progress ?? this.progress,
       dateAdded: dateAdded ?? this.dateAdded,
       lastAccessed: lastAccessed ?? this.lastAccessed,
@@ -1288,11 +1313,15 @@ class _ProjectDraft {
     required this.title,
     required this.description,
     required this.program,
+    required this.scheduleFrom,
+    required this.scheduleTo,
   });
 
   final String title;
   final String description;
   final String program;
+  final DateTime scheduleFrom;
+  final DateTime scheduleTo;
 }
 
 
@@ -1353,6 +1382,8 @@ class _ProjectDetailsDialog extends StatefulWidget {
     this.initialTitle = '',
     this.initialDescription = '',
     this.initialProgram = '',
+    this.initialScheduleFrom,
+    this.initialScheduleTo,
   });
 
   final String title;
@@ -1361,6 +1392,8 @@ class _ProjectDetailsDialog extends StatefulWidget {
   final String initialTitle;
   final String initialDescription;
   final String initialProgram;
+  final DateTime? initialScheduleFrom;
+  final DateTime? initialScheduleTo;
 
   @override
   State<_ProjectDetailsDialog> createState() => _ProjectDetailsDialogState();
@@ -1369,6 +1402,8 @@ class _ProjectDetailsDialog extends StatefulWidget {
 class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
+  DateTime? _scheduleFrom;
+  DateTime? _scheduleTo;
   late String _selectedProgram;
 
   @override
@@ -1379,6 +1414,8 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
     _descriptionController = TextEditingController(
       text: widget.initialDescription,
     );
+    _scheduleFrom = widget.initialScheduleFrom;
+    _scheduleTo = widget.initialScheduleTo;
     _selectedProgram = widget.programs.contains(widget.initialProgram)
         ? widget.initialProgram
         : widget.programs.isEmpty
@@ -1396,7 +1433,7 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
   void _submit() {
     final String title = _titleController.text.trim();
 
-    if (title.isEmpty || _selectedProgram.isEmpty) {
+    if (title.isEmpty || _selectedProgram.isEmpty || _scheduleFrom == null || _scheduleTo == null) {
       return;
     }
 
@@ -1406,6 +1443,8 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
         title: title,
         description: _descriptionController.text.trim(),
         program: _selectedProgram,
+        scheduleFrom: _scheduleFrom!,
+        scheduleTo: _scheduleTo!,
       ),
     );
   }
@@ -1455,6 +1494,17 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
                 ),
               ),
               const SizedBox(height: 16),
+              _fieldLabel('Program*'),
+              const SizedBox(height: 8),
+              _dialogDropdown<String>(
+                value: _selectedProgram,
+                items: widget.programs,
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() => _selectedProgram = value);
+                },
+              ),
+              const SizedBox(height: 16),
               _fieldLabel('Description'),
               const SizedBox(height: 8),
               SizedBox(
@@ -1473,15 +1523,24 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
                 ),
               ),
               const SizedBox(height: 16),
-              _fieldLabel('Program*'),
-              const SizedBox(height: 8),
-              _dialogDropdown<String>(
-                value: _selectedProgram,
-                items: widget.programs,
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() => _selectedProgram = value);
-                },
+              Row(
+                children: [
+                  Expanded(
+                    child: _dateField(
+                      label: 'Schedule From*',
+                      value: _scheduleFrom,
+                      onTap: () => _pickDate(isFrom: true),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: _dateField(
+                      label: 'Schedule To*',
+                      value: _scheduleTo,
+                      onTap: () => _pickDate(isFrom: false),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 32),
               Row(
@@ -1521,6 +1580,82 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
         ),
       ),
     );
+  }
+
+
+  Future<void> _pickDate({required bool isFrom}) async {
+    final DateTime initialDate = isFrom
+        ? (_scheduleFrom ?? DateTime.now())
+        : (_scheduleTo ?? _scheduleFrom ?? DateTime.now());
+
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2035),
+    );
+
+    if (picked == null) {
+      return;
+    }
+
+    setState(() {
+      if (isFrom) {
+        _scheduleFrom = picked;
+        if (_scheduleTo != null && _scheduleTo!.isBefore(picked)) {
+          _scheduleTo = picked;
+        }
+      } else {
+        _scheduleTo = picked;
+      }
+    });
+  }
+
+  Widget _dateField({
+    required String label,
+    required DateTime? value,
+    required VoidCallback onTap,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _fieldLabel(label),
+        const SizedBox(height: 8),
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: onTap,
+            child: AbsorbPointer(
+              child: SizedBox(
+                height: 46,
+                child: TextField(
+                  controller: TextEditingController(
+                    text: value == null ? '' : _formatDialogDate(value),
+                  ),
+                  style: AppText.dmSans(
+                    fontSize: 15,
+                    color: AppColors.blue,
+                  ),
+                  decoration: _fieldDecoration(
+                    hintText: 'Select date',
+                  ).copyWith(
+                    suffixIcon: const Icon(
+                      Icons.calendar_month_rounded,
+                      color: AppColors.blue,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatDialogDate(DateTime date) {
+    return '${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}/${date.year}';
   }
 
   Widget _fieldLabel(String text) {

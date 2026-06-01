@@ -437,11 +437,21 @@ class _SettingsAdminEditScreenState extends State<SettingsAdminEditScreen> {
 
           _sidebarItem(
             icon: Icons.folder_open_rounded,
-            label: 'Projects',
+            label: 'Projects & Activities',
             selected: false,
             isExpanded: isExpanded,
             onTap: () {
               Navigator.pushReplacementNamed(context, '/projects-admin');
+            },
+          ),
+
+          _sidebarItem(
+            icon: Icons.calendar_month_rounded,
+            label: 'Calendar',
+            selected: false,
+            isExpanded: isExpanded,
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/calendar-admin');
             },
           ),
 

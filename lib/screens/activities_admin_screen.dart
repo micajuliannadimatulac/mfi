@@ -14,12 +14,14 @@ class ActivitiesAdminScreen extends StatefulWidget {
     required this.projectDescription,
     required this.projectProgram,
     required this.projectProgress,
+    this.openedFromCalendar = false,
   });
 
   final String projectTitle;
   final String projectDescription;
   final String projectProgram;
   final int projectProgress;
+  final bool openedFromCalendar;
 
   @override
   State<ActivitiesAdminScreen> createState() => _ActivitiesAdminScreenState();
@@ -502,6 +504,7 @@ class _ActivitiesAdminScreenState extends State<ActivitiesAdminScreen> {
                 _activities.remove(activity);
               });
             },
+            openedFromCalendar: widget.openedFromCalendar,
           );
         },
       ),

@@ -269,6 +269,7 @@ class ActivitiesAdminDetailsScreen extends StatefulWidget {
     required this.onActivityChanged,
     required this.onActivityDeleted,
     this.onBackToProjectActivities,
+    this.openedFromCalendar = false,
   });
 
   final String projectTitle;
@@ -279,6 +280,7 @@ class ActivitiesAdminDetailsScreen extends StatefulWidget {
   final ValueChanged<ActivityAdminItem> onActivityChanged;
   final VoidCallback onActivityDeleted;
   final VoidCallback? onBackToProjectActivities;
+  final bool openedFromCalendar;
 
   @override
   State<ActivitiesAdminDetailsScreen> createState() =>
@@ -750,11 +752,20 @@ class ActivitiesAdminSidebar extends StatelessWidget {
           ),
           _ActivitiesSidebarItem(
             icon: Icons.folder_open_rounded,
-            label: 'Projects',
+            label: 'Projects & Activities',
             selected: true,
             isExpanded: isExpanded,
             onTap: () {
               Navigator.pushReplacementNamed(context, '/projects-admin');
+            },
+          ),
+          _ActivitiesSidebarItem(
+            icon: Icons.calendar_month_rounded,
+            label: 'Calendar',
+            selected: false,
+            isExpanded: isExpanded,
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/calendar-admin');
             },
           ),
           _ActivitiesSidebarItem(

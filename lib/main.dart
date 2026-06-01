@@ -7,6 +7,7 @@ import 'screens/signup_screen.dart';
 import 'screens/dashboard_admin_screen.dart';
 import 'screens/settings_admin_screen.dart';
 import 'screens/projects_admin_screen.dart';
+import 'screens/calendar_admin_screen.dart';
 import 'screens/settings_admin_edit_screen.dart';
 import 'state/blocked_users_state.dart';
 import 'styles/app_styles.dart';
@@ -66,6 +67,10 @@ class MahintanaApp extends StatelessWidget {
 
           case '/projects-admin':
             screen = const ProjectsAdminScreen();
+            break;
+
+          case '/calendar-admin':
+            screen = const CalendarAdminScreen();
             break;
 
           case '/settings-admin-edit':
