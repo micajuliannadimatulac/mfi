@@ -1,10 +1,167 @@
-import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'dart:html' as html;
 
+import 'package:flutter/material.dart';
 import '../state/blocked_users_state.dart';
 import '../state/sidebar_state.dart';
 import '../styles/app_styles.dart';
 import '../styles/settings_admin_edit_styles.dart';
+import '../widgets/auth_buttons.dart';
+
+
+Future<void> _showLogoutConfirmation(BuildContext context) async {
+  final bool? confirmed = await showDialog<bool>(
+    context: context,
+    barrierColor: Colors.black.withOpacity(0.35),
+    builder: (context) {
+      return const _LogoutConfirmationDialog();
+    },
+  );
+
+  if (confirmed != true || !context.mounted) {
+    return;
+  }
+
+  Navigator.pushNamedAndRemoveUntil(
+    context,
+    '/',
+    (route) => false,
+  );
+}
+
+
+
+class _LogoutConfirmationDialog extends StatelessWidget {
+  const _LogoutConfirmationDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(28, 26, 28, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Log Out',
+                style: AppText.calSans(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.blue,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Are you sure you want to log out?',
+                style: AppText.dmSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF4A4A4A),
+                ),
+              ),
+              const SizedBox(height: 26),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: Text(
+                      'Cancel',
+                      style: AppText.dmSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.placeholderGray,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 112,
+                    height: 38,
+                    child: AuthButton(
+                      text: 'Log Out',
+                      width: 112,
+                      height: 38,
+                      type: AuthButtonType.dashboardFilled,
+                      onTap: () => Navigator.pop(context, true),
+                      textStyle: AppText.dmSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+const String _micaPortfolioUrl = 'https://micajuliannadimatulac.github.io/portfolio/';
+
+void _openMicaPortfolio() {
+  html.window.open(_micaPortfolioUrl, '_blank');
+}
+
+class _DevelopedByFooter extends StatelessWidget {
+  const _DevelopedByFooter();
+
+  @override
+  Widget build(BuildContext context) {
+    final TextStyle labelStyle = AppText.dmSans(
+      fontSize: 10,
+      fontWeight: FontWeight.w600,
+      color: const Color(0xFF888888),
+    );
+    final TextStyle nameStyle = AppText.dmSans(
+      fontSize: 12,
+      fontWeight: FontWeight.w700,
+      color: const Color(0xFF888888),
+    );
+    final TextStyle linkStyle = nameStyle.copyWith(
+      decoration: TextDecoration.underline,
+      decorationColor: const Color(0xFF888888),
+    );
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'Developed by:',
+          textAlign: TextAlign.center,
+          style: labelStyle,
+        ),
+        const SizedBox(height: 3),
+        Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text('J. Casia & ', style: nameStyle),
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: _openMicaPortfolio,
+                child: Text('M. Dimatulac', style: linkStyle),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+
 
 class SettingsAdminEditScreen extends StatefulWidget {
   const SettingsAdminEditScreen({super.key});
@@ -124,6 +281,26 @@ class _SettingsAdminEditScreenState extends State<SettingsAdminEditScreen> {
     }
 
     Navigator.pushReplacementNamed(context, '/settings-admin');
+  }
+
+  void _saveChanges() {
+    setState(() {});
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Changes saved.',
+          style: AppText.dmSans(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: AppColors.blue,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
@@ -259,6 +436,16 @@ class _SettingsAdminEditScreenState extends State<SettingsAdminEditScreen> {
           ),
 
           _sidebarItem(
+            icon: Icons.folder_open_rounded,
+            label: 'Projects',
+            selected: false,
+            isExpanded: isExpanded,
+            onTap: () {
+              Navigator.pushReplacementNamed(context, '/projects-admin');
+            },
+          ),
+
+          _sidebarItem(
             icon: Icons.person,
             label: 'Account Settings',
             selected: true,
@@ -267,14 +454,7 @@ class _SettingsAdminEditScreenState extends State<SettingsAdminEditScreen> {
               Navigator.pushReplacementNamed(context, '/settings-admin');
             },
           ),
-
-          _sidebarItem(
-            icon: Icons.wb_sunny_outlined,
-            label: 'Dark/Light Mode',
-            selected: false,
-            isExpanded: isExpanded,
-            onTap: () {},
-          ),
+          _themeToggleItem(isExpanded: isExpanded),
 
           _sidebarItem(
             icon: Icons.logout_rounded,
@@ -282,34 +462,13 @@ class _SettingsAdminEditScreenState extends State<SettingsAdminEditScreen> {
             selected: false,
             isExpanded: isExpanded,
             onTap: () {
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                '/',
-                (route) => false,
-              );
+              _showLogoutConfirmation(context);
             },
           ),
 
           if (isExpanded) ...[
             const Spacer(),
-            Text(
-              'Created by:',
-              textAlign: TextAlign.center,
-              style: AppText.dmSans(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF888888),
-              ),
-            ),
-            Text(
-              '- Julianne & Mica -',
-              textAlign: TextAlign.center,
-              style: AppText.dmSans(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF888888),
-              ),
-            ),
+            const _DevelopedByFooter(),
             const SizedBox(height: 28),
           ],
         ],
@@ -327,6 +486,61 @@ class _SettingsAdminEditScreenState extends State<SettingsAdminEditScreen> {
           size: 34,
           color: AppColors.blue,
         ),
+      ),
+    );
+  }
+
+
+  Widget _themeToggleItem({required bool isExpanded}) {
+    return Container(
+      width: double.infinity,
+      height: 78,
+      padding: EdgeInsets.symmetric(horizontal: isExpanded ? 28 : 0),
+      child: Row(
+        mainAxisAlignment:
+            isExpanded ? MainAxisAlignment.start : MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.wb_sunny_outlined,
+            size: 28,
+            color: AppColors.blue,
+          ),
+          if (isExpanded) ...[
+            const SizedBox(width: 18),
+            Expanded(
+              child: Text(
+                'Dark/Light Mode',
+                overflow: TextOverflow.ellipsis,
+                style: SettingsAdminEditStyles.sidebarLabel,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              width: 46,
+              height: 24,
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE2E8F0),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: const Color(0xFFCBD5E1),
+                  width: 1,
+                ),
+              ),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  width: 18,
+                  height: 18,
+                  decoration: const BoxDecoration(
+                    color: AppColors.blue,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -407,6 +621,8 @@ class _SettingsAdminEditScreenState extends State<SettingsAdminEditScreen> {
                         _buildUserHeader(isBlocked, compact: true),
                         const SizedBox(height: 30),
                         _buildForm(compact: true),
+                        const SizedBox(height: 26),
+                        _buildSaveChangesButton(fullWidth: true),
                       ],
                     );
                   }
@@ -432,6 +648,11 @@ class _SettingsAdminEditScreenState extends State<SettingsAdminEditScreen> {
                       const SizedBox(height: 30),
 
                       _buildForm(),
+                      const SizedBox(height: 26),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: _buildSaveChangesButton(),
+                      ),
                     ],
                   );
                 },
@@ -444,11 +665,11 @@ class _SettingsAdminEditScreenState extends State<SettingsAdminEditScreen> {
   }
 
   Widget _buildPageTitle() {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _backChevronButton(),
-        const SizedBox(width: 12),
+        _backTextButton(),
+        const SizedBox(height: 18),
         Text(
           'Edit User',
           overflow: TextOverflow.ellipsis,
@@ -458,7 +679,7 @@ class _SettingsAdminEditScreenState extends State<SettingsAdminEditScreen> {
     );
   }
 
-  Widget _backChevronButton() {
+  Widget _backTextButton() {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _backHovered = true),
@@ -467,23 +688,25 @@ class _SettingsAdminEditScreenState extends State<SettingsAdminEditScreen> {
         behavior: HitTestBehavior.opaque,
         onTap: _goBack,
         child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 180),
-          opacity: _backHovered ? 0.75 : 1,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            width: 20,
-            height: 28,
-            alignment: Alignment.centerLeft,
-            transform: Matrix4.translationValues(
-              _backHovered ? -2 : 0,
-              0,
-              0,
-            ),
-            child: const FaIcon(
-              FontAwesomeIcons.chevronLeft,
-              size: 15,
-              color: AppColors.blue,
-            ),
+          duration: const Duration(milliseconds: 160),
+          opacity: _backHovered ? 0.7 : 1,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.chevron_left_rounded,
+                size: 24,
+                color: AppColors.blue,
+              ),
+              Text(
+                'Back to Account Settings',
+                style: AppText.dmSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.blue,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -548,6 +771,17 @@ class _SettingsAdminEditScreenState extends State<SettingsAdminEditScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSaveChangesButton({bool fullWidth = false}) {
+    return AuthButton(
+      text: 'Save Changes',
+      width: fullWidth ? double.infinity : 150,
+      height: 38,
+      type: AuthButtonType.dashboardFilled,
+      onTap: _saveChanges,
+      textStyle: SettingsAdminEditStyles.buttonText,
     );
   }
 

@@ -1,9 +1,13 @@
+import 'dart:html' as html;
+
 import 'package:flutter/material.dart';
 
 import '../state/sidebar_state.dart';
 import '../styles/app_styles.dart';
 import '../styles/dashboard_styles.dart';
 import '../widgets/auth_buttons.dart';
+import 'activities_admin_details_screen.dart';
+import 'activities_admin_screen.dart';
 
 class DashboardAdminScreen extends StatefulWidget {
   const DashboardAdminScreen({super.key});
@@ -108,6 +112,21 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
     }
   }
 
+  String _projectDescriptionFor(String program, int projectNumber) {
+    switch (program.toUpperCase()) {
+      case 'IBG':
+        return 'Supports income-building activities and enterprise development monitoring.';
+      case 'DSS':
+        return 'Tracks community services, field coordination, and support activities.';
+      case 'ENVI':
+        return 'Monitors environmental activities, field updates, and project progress.';
+      case 'KMI':
+        return 'Organizes knowledge management outputs, documentation, and reports.';
+      default:
+        return 'Tracks project activities, updates, and progress monitoring.';
+    }
+  }
+
   List<_DashboardProject> _defaultProjectsFor(String program) {
     final List<int> projectPercents = _projectPercentsFor(program);
 
@@ -116,6 +135,8 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
 
       return _DashboardProject(
         title: '$program Project $projectNumber',
+        description: _projectDescriptionFor(program, projectNumber),
+        program: program,
         percent: projectPercents[index],
         activities: _defaultActivitiesFor(
           program,
@@ -141,9 +162,29 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
 
       return _DashboardActivity(
         title: '$program Activity $activityNumber',
+        description: _dashboardActivityDescriptionFor(program, activityNumber),
+        code: '$program-A${activityNumber.toString().padLeft(2, '0')}',
+        componentName: '$program Component $activityNumber',
+        scheduleFrom: 'Jun ${activityNumber.toString().padLeft(2, '0')}, 2026',
+        scheduleTo: 'Jun ${(activityNumber + 4).toString().padLeft(2, '0')}, 2026',
         percent: selectedProjectActivities[index],
       );
     });
+  }
+
+  String _dashboardActivityDescriptionFor(String program, int activityNumber) {
+    switch (program.toUpperCase()) {
+      case 'IBG':
+        return 'Income-building task focused on enterprise support and monitoring outputs.';
+      case 'DSS':
+        return 'Community service task covering coordination, delivery, and field documentation.';
+      case 'ENVI':
+        return 'Environmental task tracking implementation, site updates, and progress evidence.';
+      case 'KMI':
+        return 'Knowledge management task for reports, documentation, and learning materials.';
+      default:
+        return 'Project activity task with tracked schedule, outputs, and progress.';
+    }
   }
 
   List<_DashboardProject> _renameProjectsForProgram({
@@ -171,6 +212,7 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
 
       return project.copyWith(
         title: updatedProjectTitle,
+        program: newProgramName,
         activities: updatedActivities,
       );
     }).toList();
@@ -266,6 +308,7 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
       builder: (context) {
         return _ManageProjectsDialog(
           program: _selectedProgram,
+          programs: _programs,
           projects: _currentProjects,
           onProjectsChanged: (updatedProjects) {
             setState(() {
@@ -319,6 +362,134 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
           },
         );
       },
+    );
+  }
+
+
+  String _statusLabelForPercent(int percent) {
+    if (percent >= 100) {
+      return 'Completed';
+    }
+
+    if (percent <= 0) {
+      return 'Not Started';
+    }
+
+    return 'In Progress';
+  }
+
+  void _openActivityDetails(_DashboardActivity activity) {
+    final List<_DashboardProject> projects = _currentProjects;
+
+    if (projects.isEmpty || _selectedProjectIndex >= projects.length) {
+      return;
+    }
+
+    final _DashboardProject selectedProject = projects[_selectedProjectIndex];
+    final int activityIndexAtOpen = selectedProject.activities.indexOf(activity);
+
+    if (activityIndexAtOpen == -1) {
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) {
+          return ActivitiesAdminDetailsScreen(
+            projectTitle: selectedProject.title,
+            projectDescription: selectedProject.description,
+            projectProgram: selectedProject.program,
+            projectProgress: selectedProject.percent,
+            activity: ActivityAdminItem(
+              title: activity.title,
+              description: activity.description,
+              code: activity.code,
+              componentName: activity.componentName,
+              program: selectedProject.program,
+              scheduleFrom: activity.scheduleFrom,
+              scheduleTo: activity.scheduleTo,
+              percent: activity.percent,
+              status: _statusLabelForPercent(activity.percent),
+            ),
+            onActivityChanged: (updatedActivity) {
+              setState(() {
+                final List<_DashboardProject> updatedProjects =
+                    List<_DashboardProject>.from(_currentProjects);
+
+                if (_selectedProjectIndex >= updatedProjects.length) {
+                  return;
+                }
+
+                final _DashboardProject project =
+                    updatedProjects[_selectedProjectIndex];
+                final List<_DashboardActivity> updatedActivities =
+                    List<_DashboardActivity>.from(project.activities);
+
+                if (activityIndexAtOpen >= updatedActivities.length) {
+                  return;
+                }
+
+                updatedActivities[activityIndexAtOpen] = activity.copyWith(
+                  title: updatedActivity.title,
+                  description: updatedActivity.description,
+                  code: updatedActivity.code,
+                  componentName: updatedActivity.componentName,
+                  scheduleFrom: updatedActivity.scheduleFrom,
+                  scheduleTo: updatedActivity.scheduleTo,
+                  percent: updatedActivity.percent,
+                );
+
+                updatedProjects[_selectedProjectIndex] = project.copyWith(
+                  activities: updatedActivities,
+                );
+                _programProjects[_selectedProgram] = updatedProjects;
+              });
+            },
+            onActivityDeleted: () {
+              setState(() {
+                final List<_DashboardProject> updatedProjects =
+                    List<_DashboardProject>.from(_currentProjects);
+
+                if (_selectedProjectIndex >= updatedProjects.length) {
+                  return;
+                }
+
+                final _DashboardProject project =
+                    updatedProjects[_selectedProjectIndex];
+                final List<_DashboardActivity> updatedActivities =
+                    List<_DashboardActivity>.from(project.activities);
+
+                if (activityIndexAtOpen >= updatedActivities.length) {
+                  return;
+                }
+
+                updatedActivities.removeAt(activityIndexAtOpen);
+
+                updatedProjects[_selectedProjectIndex] = project.copyWith(
+                  activities: updatedActivities,
+                );
+                _programProjects[_selectedProgram] = updatedProjects;
+              });
+            },
+            onBackToProjectActivities: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) {
+                    return ActivitiesAdminScreen(
+                      projectTitle: selectedProject.title,
+                      projectDescription: selectedProject.description,
+                      projectProgram: selectedProject.program,
+                      projectProgress: selectedProject.percent,
+                    );
+                  },
+                ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
@@ -406,8 +577,7 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
                                 activities: _currentActivities,
                                 resetVersion: _listResetVersion,
                                 onProjectSelected: _selectProject,
-                                onManageProjects: _showManageProjectsDialog,
-                                onManageActivities: _showManageActivitiesDialog,
+                                onActivitySelected: _openActivityDetails,
                               ),
                             ],
                           ),
@@ -428,21 +598,29 @@ class _DashboardAdminScreenState extends State<DashboardAdminScreen> {
 class _DashboardProject {
   const _DashboardProject({
     required this.title,
+    required this.description,
+    required this.program,
     required this.percent,
     required this.activities,
   });
 
   final String title;
+  final String description;
+  final String program;
   final int percent;
   final List<_DashboardActivity> activities;
 
   _DashboardProject copyWith({
     String? title,
+    String? description,
+    String? program,
     int? percent,
     List<_DashboardActivity>? activities,
   }) {
     return _DashboardProject(
       title: title ?? this.title,
+      description: description ?? this.description,
+      program: program ?? this.program,
       percent: percent ?? this.percent,
       activities: activities ?? this.activities,
     );
@@ -452,18 +630,38 @@ class _DashboardProject {
 class _DashboardActivity {
   const _DashboardActivity({
     required this.title,
+    required this.description,
     required this.percent,
+    this.code = '',
+    this.componentName = 'General Component',
+    this.scheduleFrom = 'Not set',
+    this.scheduleTo = 'Not set',
   });
 
   final String title;
+  final String description;
+  final String code;
+  final String componentName;
+  final String scheduleFrom;
+  final String scheduleTo;
   final int percent;
 
   _DashboardActivity copyWith({
     String? title,
+    String? description,
+    String? code,
+    String? componentName,
+    String? scheduleFrom,
+    String? scheduleTo,
     int? percent,
   }) {
     return _DashboardActivity(
       title: title ?? this.title,
+      description: description ?? this.description,
+      code: code ?? this.code,
+      componentName: componentName ?? this.componentName,
+      scheduleFrom: scheduleFrom ?? this.scheduleFrom,
+      scheduleTo: scheduleTo ?? this.scheduleTo,
       percent: percent ?? this.percent,
     );
   }
@@ -477,6 +675,26 @@ class _DashboardSidebar extends StatelessWidget {
 
   final bool isExpanded;
   final VoidCallback onToggle;
+
+  Future<void> _showLogoutConfirmation(BuildContext context) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.35),
+      builder: (context) {
+        return const _LogoutConfirmationDialog();
+      },
+    );
+
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      '/',
+      (route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -545,6 +763,18 @@ class _DashboardSidebar extends StatelessWidget {
             onTap: () {},
           ),
           _SidebarItem(
+            icon: Icons.folder_open_rounded,
+            label: 'Projects',
+            isExpanded: isExpanded,
+            selected: false,
+            onTap: () {
+              Navigator.pushReplacementNamed(
+                context,
+                '/projects-admin',
+              );
+            },
+          ),
+          _SidebarItem(
             icon: Icons.person,
             label: 'Account Settings',
             isExpanded: isExpanded,
@@ -556,46 +786,19 @@ class _DashboardSidebar extends StatelessWidget {
               );
             },
           ),
-          _SidebarItem(
-            icon: Icons.wb_sunny_outlined,
-            label: 'Dark/Light Mode',
-            isExpanded: isExpanded,
-            selected: false,
-            onTap: () {},
-          ),
+          _SidebarThemeToggle(isExpanded: isExpanded),
           _SidebarItem(
             icon: Icons.logout_rounded,
             label: 'Log Out',
             isExpanded: isExpanded,
             selected: false,
             onTap: () {
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                '/',
-                (route) => false,
-              );
+              _showLogoutConfirmation(context);
             },
           ),
           if (isExpanded) ...[
             const Spacer(),
-            Text(
-              'Created by:',
-              textAlign: TextAlign.center,
-              style: AppText.dmSans(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF888888),
-              ),
-            ),
-            Text(
-              '- J.Casia & M.Dimatulac -',
-              textAlign: TextAlign.center,
-              style: AppText.dmSans(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF888888),
-              ),
-            ),
+            const _DevelopedByFooter(),
             const SizedBox(height: 28),
           ],
         ],
@@ -679,6 +882,83 @@ class _SidebarItem extends StatelessWidget {
                 ),
               ],
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+class _SidebarThemeToggle extends StatelessWidget {
+  const _SidebarThemeToggle({
+    required this.isExpanded,
+  });
+
+  final bool isExpanded;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: 78,
+      padding: EdgeInsets.symmetric(horizontal: isExpanded ? 28 : 0),
+      child: Row(
+        mainAxisAlignment:
+            isExpanded ? MainAxisAlignment.start : MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.wb_sunny_outlined,
+            size: 28,
+            color: AppColors.blue,
+          ),
+          if (isExpanded) ...[
+            const SizedBox(width: 18),
+            Expanded(
+              child: Text(
+                'Dark/Light Mode',
+                overflow: TextOverflow.ellipsis,
+                style: AppText.calSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.blue,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            const _SidebarToggleSwitch(),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SidebarToggleSwitch extends StatelessWidget {
+  const _SidebarToggleSwitch();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 46,
+      height: 24,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE2E8F0),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: const Color(0xFFCBD5E1),
+          width: 1,
+        ),
+      ),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Container(
+          width: 18,
+          height: 18,
+          decoration: const BoxDecoration(
+            color: AppColors.blue,
+            shape: BoxShape.circle,
           ),
         ),
       ),
@@ -891,17 +1171,38 @@ class _ManageProgramsDialog extends StatefulWidget {
 }
 
 class _ManageProgramsDialogState extends State<_ManageProgramsDialog> {
+  late final TextEditingController _searchController;
   late List<String> _localPrograms;
+
+  String _searchQuery = '';
+  _NameSortOrder _sortOrder = _NameSortOrder.az;
 
   @override
   void initState() {
     super.initState();
 
+    _searchController = TextEditingController();
     _localPrograms = List<String>.from(widget.programs);
   }
 
-  void _syncDashboardPrograms() {
-    widget.onProgramsChanged(List<String>.from(_localPrograms));
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<String> get _filteredPrograms {
+    final String query = _searchQuery.trim().toLowerCase();
+    final List<String> filtered = _localPrograms.where((program) {
+      return query.isEmpty || program.toLowerCase().contains(query);
+    }).toList();
+
+    filtered.sort((a, b) {
+      final int result = a.toLowerCase().compareTo(b.toLowerCase());
+      return _sortOrder == _NameSortOrder.az ? result : -result;
+    });
+
+    return filtered;
   }
 
   Future<void> _addProgram() async {
@@ -924,8 +1225,6 @@ class _ManageProgramsDialogState extends State<_ManageProgramsDialog> {
     setState(() {
       _localPrograms.add(programName.trim());
     });
-
-    _syncDashboardPrograms();
   }
 
   Future<void> _editProgram(String oldName) async {
@@ -953,30 +1252,344 @@ class _ManageProgramsDialogState extends State<_ManageProgramsDialog> {
         _localPrograms[index] = newName.trim();
       }
     });
-
-    _syncDashboardPrograms();
   }
 
   void _deleteProgram(String programName) {
     setState(() {
       _localPrograms.remove(programName);
     });
+  }
 
-    _syncDashboardPrograms();
+  void _savePrograms() {
+    widget.onProgramsChanged(List<String>.from(_localPrograms));
+    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    return _ManageListDialog<String>(
-      title: 'Manage Programs',
-      sectionTitle: 'Programs',
-      searchHint: 'Search program',
-      addButtonText: '+ Add Program',
-      items: _localPrograms,
-      getTitle: (program) => program,
-      onAdd: _addProgram,
-      onEdit: _editProgram,
-      onDelete: _deleteProgram,
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 820),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(40, 38, 40, 32),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: AppShadows.card,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Manage Programs',
+                textAlign: TextAlign.center,
+                style: AppText.calSans(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.blue,
+                ),
+              ),
+              const SizedBox(height: 24),
+              _buildProgramControls(),
+              const SizedBox(height: 16),
+              Flexible(
+                child: _buildProgramList(),
+              ),
+              const SizedBox(height: 28),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  AuthButton(
+                    text: 'Cancel',
+                    width: 115,
+                    height: 44,
+                    type: AuthButtonType.dashboardOutline,
+                    onTap: () => Navigator.pop(context),
+                    textStyle: AppText.dmSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.blue,
+                    ),
+                  ),
+                  const SizedBox(width: 24),
+                  AuthButton(
+                    text: 'Save',
+                    width: 115,
+                    height: 44,
+                    type: AuthButtonType.dashboardFilled,
+                    onTap: _savePrograms,
+                    textStyle: AppText.dmSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProgramControls() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool compact = constraints.maxWidth < 650;
+
+        final Widget search = SizedBox(
+          height: 44,
+          child: TextField(
+            controller: _searchController,
+            onChanged: (value) {
+              setState(() {
+                _searchQuery = value;
+              });
+            },
+            style: AppText.dmSans(
+              fontSize: 14,
+              color: AppColors.blue,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Search programs',
+              hintStyle: AppText.dmSans(
+                fontSize: 14,
+                color: AppColors.placeholderGray,
+              ),
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                color: AppColors.blue,
+                size: 22,
+              ),
+              filled: true,
+              fillColor: AppColors.softGray,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(
+                  color: AppColors.borderGray,
+                  width: 1,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(
+                  color: AppColors.blue,
+                  width: 1,
+                ),
+              ),
+            ),
+          ),
+        );
+
+        final Widget sort = SizedBox(
+          height: 44,
+          child: DropdownButtonFormField<_NameSortOrder>(
+            value: _sortOrder,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: AppColors.softGray,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 0,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(
+                  color: AppColors.borderGray,
+                  width: 1,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(
+                  color: AppColors.blue,
+                  width: 1,
+                ),
+              ),
+            ),
+            icon: const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: AppColors.blue,
+            ),
+            isExpanded: true,
+            style: AppText.dmSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.blue,
+            ),
+            items: const [
+              DropdownMenuItem(
+                value: _NameSortOrder.az,
+                child: Text('A-Z'),
+              ),
+              DropdownMenuItem(
+                value: _NameSortOrder.za,
+                child: Text('Z-A'),
+              ),
+            ],
+            onChanged: (value) {
+              if (value == null) {
+                return;
+              }
+
+              setState(() {
+                _sortOrder = value;
+              });
+            },
+          ),
+        );
+
+        final Widget addButton = AuthButton(
+          text: '+ Add Program',
+          width: 150,
+          height: 44,
+          type: AuthButtonType.dashboardFilled,
+          onTap: _addProgram,
+          textStyle: AppText.dmSans(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        );
+
+        if (compact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              search,
+              const SizedBox(height: 12),
+              sort,
+              const SizedBox(height: 12),
+              addButton,
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(flex: 2, child: search),
+            const SizedBox(width: 12),
+            SizedBox(width: 120, child: sort),
+            const SizedBox(width: 12),
+            addButton,
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildProgramList() {
+    final List<String> programs = _filteredPrograms;
+
+    if (programs.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: AppColors.blue.withOpacity(0.10),
+          ),
+        ),
+        child: Text(
+          'No programs found.',
+          style: AppText.dmSans(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            color: AppColors.placeholderGray,
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 380),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.blue.withOpacity(0.10),
+        ),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: programs.map((program) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.blue.withOpacity(0.08),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.blue.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      'Program',
+                      style: AppText.dmSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.blue,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      program,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.dmSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.blue,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Edit program',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(
+                      Icons.edit_outlined,
+                      color: AppColors.blue,
+                      size: 20,
+                    ),
+                    onPressed: () => _editProgram(program),
+                  ),
+                  IconButton(
+                    tooltip: 'Delete program',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: Color(0xFFD64545),
+                      size: 20,
+                    ),
+                    onPressed: () => _deleteProgram(program),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ),
     );
   }
 }
@@ -984,11 +1597,13 @@ class _ManageProgramsDialogState extends State<_ManageProgramsDialog> {
 class _ManageProjectsDialog extends StatefulWidget {
   const _ManageProjectsDialog({
     required this.program,
+    required this.programs,
     required this.projects,
     required this.onProjectsChanged,
   });
 
   final String program;
+  final List<String> programs;
   final List<_DashboardProject> projects;
   final ValueChanged<List<_DashboardProject>> onProjectsChanged;
 
@@ -1011,26 +1626,31 @@ class _ManageProjectsDialogState extends State<_ManageProjectsDialog> {
   }
 
   Future<void> _addProject() async {
-    final String? projectName = await showDialog<String>(
+    final _ProjectDraft? draft = await showDialog<_ProjectDraft>(
       context: context,
       barrierColor: Colors.black.withOpacity(0.35),
       builder: (context) {
-        return const _NameDialog(
+        return _ProjectDetailsDialog(
           title: 'Add Project',
-          label: 'Project Name*',
           buttonText: 'Add',
+          programs: widget.program.isEmpty ? widget.programs : [widget.program],
+          initialProgram: widget.program,
         );
       },
     );
 
-    if (projectName == null || projectName.trim().isEmpty) {
+    if (draft == null || draft.title.trim().isEmpty) {
       return;
     }
 
     setState(() {
       _localProjects.add(
         _DashboardProject(
-          title: projectName.trim(),
+          title: draft.title.trim(),
+          description: draft.description.trim().isEmpty
+              ? 'No description added yet.'
+              : draft.description.trim(),
+          program: draft.program,
           percent: 0,
           activities: const [],
         ),
@@ -1041,20 +1661,24 @@ class _ManageProjectsDialogState extends State<_ManageProjectsDialog> {
   }
 
   Future<void> _editProject(_DashboardProject oldProject) async {
-    final String? newName = await showDialog<String>(
+    final _ProjectDraft? draft = await showDialog<_ProjectDraft>(
       context: context,
       barrierColor: Colors.black.withOpacity(0.35),
       builder: (context) {
-        return _NameDialog(
+        return _ProjectDetailsDialog(
           title: 'Edit Project',
-          label: 'Project Name*',
           buttonText: 'Save',
-          initialValue: oldProject.title,
+          programs: widget.program.isEmpty ? widget.programs : [widget.program],
+          initialTitle: oldProject.title,
+          initialDescription: oldProject.description,
+          initialProgram: oldProject.program.isEmpty
+              ? widget.program
+              : oldProject.program,
         );
       },
     );
 
-    if (newName == null || newName.trim().isEmpty) {
+    if (draft == null || draft.title.trim().isEmpty) {
       return;
     }
 
@@ -1063,7 +1687,11 @@ class _ManageProjectsDialogState extends State<_ManageProjectsDialog> {
 
       if (index != -1) {
         _localProjects[index] = oldProject.copyWith(
-          title: newName.trim(),
+          title: draft.title.trim(),
+          description: draft.description.trim().isEmpty
+              ? 'No description added yet.'
+              : draft.description.trim(),
+          program: draft.program,
         );
       }
     });
@@ -1072,11 +1700,25 @@ class _ManageProjectsDialogState extends State<_ManageProjectsDialog> {
   }
 
   void _deleteProject(_DashboardProject project) {
-    setState(() {
-      _localProjects.remove(project);
-    });
+    showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.35),
+      builder: (context) {
+        return _DeleteProjectConfirmationDialog(
+          projectName: project.title,
+        );
+      },
+    ).then((confirmed) {
+      if (confirmed != true) {
+        return;
+      }
 
-    _syncDashboardProjects();
+      setState(() {
+        _localProjects.remove(project);
+      });
+
+      _syncDashboardProjects();
+    });
   }
 
   @override
@@ -1127,27 +1769,56 @@ class _ManageActivitiesDialogState extends State<_ManageActivitiesDialog> {
     );
   }
 
+  List<String> get _componentOptions {
+    final List<String> components = _localActivities
+        .map((activity) => activity.componentName.trim())
+        .where((component) => component.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
+    return components.isEmpty ? ['General Component'] : components;
+  }
+
   Future<void> _addActivity() async {
-    final String? activityName = await showDialog<String>(
+    final _DashboardActivityDraft? draft =
+        await showDialog<_DashboardActivityDraft>(
       context: context,
       barrierColor: Colors.black.withOpacity(0.35),
       builder: (context) {
-        return const _NameDialog(
+        return _DashboardActivityDetailsDialog(
           title: 'Add Activity',
-          label: 'Activity Name*',
           buttonText: 'Add',
+          components: _componentOptions,
         );
       },
     );
 
-    if (activityName == null || activityName.trim().isEmpty) {
+    if (draft == null || draft.title.trim().isEmpty) {
       return;
     }
+
+    final int nextIndex = _localActivities.length + 1;
 
     setState(() {
       _localActivities.add(
         _DashboardActivity(
-          title: activityName.trim(),
+          title: draft.title.trim(),
+          description: draft.description.trim().isEmpty
+              ? 'No description added yet.'
+              : draft.description.trim(),
+          code: draft.code.trim().isEmpty
+              ? '${widget.project.program}-A${nextIndex.toString().padLeft(2, '0')}'
+              : draft.code.trim(),
+          componentName: draft.componentName.trim().isEmpty
+              ? 'General Component'
+              : draft.componentName.trim(),
+          scheduleFrom: draft.scheduleFrom.trim().isEmpty
+              ? 'Not set'
+              : draft.scheduleFrom.trim(),
+          scheduleTo: draft.scheduleTo.trim().isEmpty
+              ? 'Not set'
+              : draft.scheduleTo.trim(),
           percent: 0,
         ),
       );
@@ -1157,20 +1828,21 @@ class _ManageActivitiesDialogState extends State<_ManageActivitiesDialog> {
   }
 
   Future<void> _editActivity(_DashboardActivity oldActivity) async {
-    final String? newName = await showDialog<String>(
+    final _DashboardActivityDraft? draft =
+        await showDialog<_DashboardActivityDraft>(
       context: context,
       barrierColor: Colors.black.withOpacity(0.35),
       builder: (context) {
-        return _NameDialog(
+        return _DashboardActivityDetailsDialog(
           title: 'Edit Activity',
-          label: 'Activity Name*',
           buttonText: 'Save',
-          initialValue: oldActivity.title,
+          components: _componentOptions,
+          initialActivity: oldActivity,
         );
       },
     );
 
-    if (newName == null || newName.trim().isEmpty) {
+    if (draft == null || draft.title.trim().isEmpty) {
       return;
     }
 
@@ -1179,7 +1851,20 @@ class _ManageActivitiesDialogState extends State<_ManageActivitiesDialog> {
 
       if (index != -1) {
         _localActivities[index] = oldActivity.copyWith(
-          title: newName.trim(),
+          title: draft.title.trim(),
+          description: draft.description.trim().isEmpty
+              ? 'No description added yet.'
+              : draft.description.trim(),
+          code: draft.code.trim(),
+          componentName: draft.componentName.trim().isEmpty
+              ? 'General Component'
+              : draft.componentName.trim(),
+          scheduleFrom: draft.scheduleFrom.trim().isEmpty
+              ? 'Not set'
+              : draft.scheduleFrom.trim(),
+          scheduleTo: draft.scheduleTo.trim().isEmpty
+              ? 'Not set'
+              : draft.scheduleTo.trim(),
         );
       }
     });
@@ -1207,6 +1892,387 @@ class _ManageActivitiesDialogState extends State<_ManageActivitiesDialog> {
       onAdd: _addActivity,
       onEdit: _editActivity,
       onDelete: _deleteActivity,
+    );
+  }
+}
+
+
+class _DashboardActivityDraft {
+  const _DashboardActivityDraft({
+    required this.title,
+    required this.description,
+    required this.code,
+    required this.componentName,
+    required this.scheduleFrom,
+    required this.scheduleTo,
+  });
+
+  final String title;
+  final String description;
+  final String code;
+  final String componentName;
+  final String scheduleFrom;
+  final String scheduleTo;
+}
+
+class _DashboardActivityDetailsDialog extends StatefulWidget {
+  const _DashboardActivityDetailsDialog({
+    required this.title,
+    required this.buttonText,
+    required this.components,
+    this.initialActivity,
+  });
+
+  final String title;
+  final String buttonText;
+  final List<String> components;
+  final _DashboardActivity? initialActivity;
+
+  @override
+  State<_DashboardActivityDetailsDialog> createState() =>
+      _DashboardActivityDetailsDialogState();
+}
+
+class _DashboardActivityDetailsDialogState
+    extends State<_DashboardActivityDetailsDialog> {
+  late final TextEditingController _titleController;
+  late final TextEditingController _descriptionController;
+  late final TextEditingController _codeController;
+  late final TextEditingController _scheduleFromController;
+  late final TextEditingController _scheduleToController;
+  late String _selectedComponentName;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final _DashboardActivity? initialActivity = widget.initialActivity;
+    final List<String> components = widget.components.isEmpty
+        ? ['General Component']
+        : widget.components;
+
+    _titleController = TextEditingController(
+      text: initialActivity?.title ?? '',
+    );
+    _descriptionController = TextEditingController(
+      text: initialActivity?.description ?? '',
+    );
+    _codeController = TextEditingController(
+      text: initialActivity?.code ?? '',
+    );
+    _scheduleFromController = TextEditingController(
+      text: initialActivity?.scheduleFrom ?? '',
+    );
+    _scheduleToController = TextEditingController(
+      text: initialActivity?.scheduleTo ?? '',
+    );
+
+    final String initialComponent = initialActivity?.componentName ?? '';
+    _selectedComponentName = components.contains(initialComponent)
+        ? initialComponent
+        : components.first;
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _codeController.dispose();
+    _scheduleFromController.dispose();
+    _scheduleToController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final String title = _titleController.text.trim();
+
+    if (title.isEmpty) {
+      return;
+    }
+
+    Navigator.pop(
+      context,
+      _DashboardActivityDraft(
+        title: title,
+        description: _descriptionController.text.trim(),
+        code: _codeController.text.trim(),
+        componentName: _selectedComponentName.trim(),
+        scheduleFrom: _scheduleFromController.text.trim(),
+        scheduleTo: _scheduleToController.text.trim(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 640),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(40, 38, 40, 32),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: AppShadows.card,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  widget.title,
+                  textAlign: TextAlign.center,
+                  style: AppText.calSans(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.blue,
+                  ),
+                ),
+                const SizedBox(height: 28),
+                _dialogField(
+                  label: 'Activity Name*',
+                  controller: _titleController,
+                  hintText: 'Courtesy Visits',
+                ),
+                const SizedBox(height: 16),
+                _dialogField(
+                  label: 'Description',
+                  controller: _descriptionController,
+                  maxLines: 3,
+                  height: 84,
+                  hintText: 'Add a short activity description',
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _dialogField(
+                        label: 'Code',
+                        controller: _codeController,
+                        hintText: '1.0, A1, etc.',
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(child: _componentDropdown()),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _dialogField(
+                        label: 'Schedule From',
+                        controller: _scheduleFromController,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _dialogField(
+                        label: 'Schedule To',
+                        controller: _scheduleToController,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _fixedTargetPanel(),
+                const SizedBox(height: 32),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    AuthButton(
+                      text: 'Cancel',
+                      width: 115,
+                      height: 44,
+                      type: AuthButtonType.dashboardOutline,
+                      onTap: () => Navigator.pop(context),
+                      textStyle: AppText.dmSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.blue,
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                    AuthButton(
+                      text: widget.buttonText,
+                      width: 115,
+                      height: 44,
+                      type: AuthButtonType.dashboardFilled,
+                      onTap: _submit,
+                      textStyle: AppText.dmSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _componentDropdown() {
+    final List<String> components = widget.components.isEmpty
+        ? ['General Component']
+        : widget.components;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _dialogLabel('Select Component Name'),
+        const SizedBox(height: 8),
+        Container(
+          height: 46,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: AppColors.softGray,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: AppColors.borderGray,
+              width: 1,
+            ),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selectedComponentName,
+              icon: const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: AppColors.blue,
+              ),
+              isExpanded: true,
+              style: AppText.dmSans(
+                fontSize: 15,
+                color: AppColors.blue,
+              ),
+              dropdownColor: Colors.white,
+              items: components.map((component) {
+                return DropdownMenuItem<String>(
+                  value: component,
+                  child: Text(
+                    component,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              }).toList(),
+              onChanged: (value) {
+                if (value == null) {
+                  return;
+                }
+
+                setState(() {
+                  _selectedComponentName = value;
+                });
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _fixedTargetPanel() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.softGray,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: AppColors.borderGray,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.lock_outline_rounded,
+            size: 20,
+            color: AppColors.blue,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Target/Indicators: Fixed',
+              style: AppText.dmSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.blue,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dialogField({
+    required String label,
+    required TextEditingController controller,
+    String? hintText,
+    int maxLines = 1,
+    double height = 46,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _dialogLabel(label),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: height,
+          child: TextField(
+            controller: controller,
+            maxLines: maxLines,
+            style: AppText.dmSans(
+              fontSize: 15,
+              color: AppColors.blue,
+            ),
+            decoration: InputDecoration(
+              hintText: hintText,
+              hintStyle: AppText.dmSans(
+                fontSize: 14,
+                color: AppColors.placeholderGray,
+              ),
+              filled: true,
+              fillColor: AppColors.softGray,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(
+                  color: AppColors.borderGray,
+                  width: 1,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(
+                  color: AppColors.blue,
+                  width: 1,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _dialogLabel(String label) {
+    return Text(
+      label,
+      style: AppText.dmSans(
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
+        color: AppColors.blue,
+      ),
     );
   }
 }
@@ -1588,6 +2654,366 @@ class _ProgramActionTextButtonState extends State<_ProgramActionTextButton> {
                   fontWeight: FontWeight.w700,
                   color: color,
                 ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+class _ProjectDraft {
+  const _ProjectDraft({
+    required this.title,
+    required this.description,
+    required this.program,
+  });
+
+  final String title;
+  final String description;
+  final String program;
+}
+
+class _ProjectDetailsDialog extends StatefulWidget {
+  const _ProjectDetailsDialog({
+    required this.title,
+    required this.buttonText,
+    required this.programs,
+    required this.initialProgram,
+    this.initialTitle = '',
+    this.initialDescription = '',
+  });
+
+  final String title;
+  final String buttonText;
+  final List<String> programs;
+  final String initialProgram;
+  final String initialTitle;
+  final String initialDescription;
+
+  @override
+  State<_ProjectDetailsDialog> createState() => _ProjectDetailsDialogState();
+}
+
+class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
+  late final TextEditingController _titleController;
+  late final TextEditingController _descriptionController;
+  late String _selectedProgram;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _titleController = TextEditingController(text: widget.initialTitle);
+    _descriptionController = TextEditingController(
+      text: widget.initialDescription,
+    );
+    _selectedProgram = widget.programs.contains(widget.initialProgram)
+        ? widget.initialProgram
+        : widget.programs.isEmpty
+            ? ''
+            : widget.programs.first;
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final String title = _titleController.text.trim();
+
+    if (title.isEmpty || _selectedProgram.isEmpty) {
+      return;
+    }
+
+    Navigator.pop(
+      context,
+      _ProjectDraft(
+        title: title,
+        description: _descriptionController.text.trim(),
+        program: _selectedProgram,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: 560,
+        ),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(40, 38, 40, 32),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: AppShadows.card,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                widget.title,
+                textAlign: TextAlign.center,
+                style: AppText.calSans(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.blue,
+                ),
+              ),
+              const SizedBox(height: 28),
+              _fieldLabel('Title*'),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 46,
+                child: TextField(
+                  controller: _titleController,
+                  textInputAction: TextInputAction.next,
+                  style: AppText.dmSans(
+                    fontSize: 15,
+                    color: AppColors.blue,
+                  ),
+                  decoration: _fieldDecoration(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              _fieldLabel('Description'),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 84,
+                child: TextField(
+                  controller: _descriptionController,
+                  maxLines: 3,
+                  textInputAction: TextInputAction.newline,
+                  style: AppText.dmSans(
+                    fontSize: 15,
+                    color: AppColors.blue,
+                  ),
+                  decoration: _fieldDecoration(
+                    hintText: 'Add a short project description',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              _fieldLabel('Program*'),
+              const SizedBox(height: 8),
+              Container(
+                height: 46,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.softGray,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: AppColors.borderGray,
+                    width: 1,
+                  ),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedProgram,
+                    isExpanded: true,
+                    icon: const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: AppColors.blue,
+                    ),
+                    style: AppText.dmSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.blue,
+                    ),
+                    dropdownColor: Colors.white,
+                    items: widget.programs
+                        .map(
+                          (program) => DropdownMenuItem<String>(
+                            value: program,
+                            child: Text(program),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null) {
+                        return;
+                      }
+
+                      setState(() {
+                        _selectedProgram = value;
+                      });
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  AuthButton(
+                    text: 'Cancel',
+                    width: 115,
+                    height: 44,
+                    type: AuthButtonType.dashboardOutline,
+                    onTap: () {
+                      Navigator.pop(context);
+                    },
+                    textStyle: AppText.dmSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.blue,
+                    ),
+                  ),
+                  const SizedBox(width: 24),
+                  AuthButton(
+                    text: widget.buttonText,
+                    width: 115,
+                    height: 44,
+                    type: AuthButtonType.dashboardFilled,
+                    onTap: _submit,
+                    textStyle: AppText.dmSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _fieldLabel(String text) {
+    return Text(
+      text,
+      style: AppText.dmSans(
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
+        color: AppColors.blue,
+      ),
+    );
+  }
+
+  InputDecoration _fieldDecoration({String? hintText}) {
+    return InputDecoration(
+      hintText: hintText,
+      hintStyle: AppText.dmSans(
+        fontSize: 13,
+        color: AppColors.placeholderGray,
+      ),
+      filled: true,
+      fillColor: AppColors.softGray,
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 14,
+        vertical: 12,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(
+          color: AppColors.borderGray,
+          width: 1,
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(
+          color: AppColors.blue,
+          width: 1,
+        ),
+      ),
+    );
+  }
+}
+
+class _DeleteProjectConfirmationDialog extends StatelessWidget {
+  const _DeleteProjectConfirmationDialog({
+    required this.projectName,
+  });
+
+  final String projectName;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: 480,
+        ),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(36, 34, 36, 30),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: AppShadows.card,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Delete Project',
+                textAlign: TextAlign.center,
+                style: AppText.calSans(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.blue,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'Are you sure you want to delete "$projectName" from projects? This cannot be undone.',
+                textAlign: TextAlign.center,
+                style: AppText.dmSans(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textGray,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 28),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  AuthButton(
+                    text: 'Cancel',
+                    width: 115,
+                    height: 42,
+                    type: AuthButtonType.dashboardOutline,
+                    onTap: () {
+                      Navigator.pop(context, false);
+                    },
+                    textStyle: AppText.dmSans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.blue,
+                    ),
+                  ),
+                  const SizedBox(width: 22),
+                  AuthButton(
+                    text: 'Delete',
+                    width: 115,
+                    height: 42,
+                    type: AuthButtonType.dashboardFilled,
+                    onTap: () {
+                      Navigator.pop(context, true);
+                    },
+                    textStyle: AppText.dmSans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -2186,6 +3612,144 @@ class _CalendarArrowButton extends StatelessWidget {
   }
 }
 
+
+class _LogoutConfirmationDialog extends StatelessWidget {
+  const _LogoutConfirmationDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(28, 26, 28, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Log Out',
+                style: AppText.calSans(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.blue,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Are you sure you want to log out?',
+                style: AppText.dmSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF4A4A4A),
+                ),
+              ),
+              const SizedBox(height: 26),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context, false);
+                    },
+                    child: Text(
+                      'Cancel',
+                      style: AppText.dmSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.placeholderGray,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 112,
+                    height: 38,
+                    child: AuthButton(
+                      text: 'Log Out',
+                      width: 112,
+                      height: 38,
+                      type: AuthButtonType.dashboardFilled,
+                      onTap: () {
+                        Navigator.pop(context, true);
+                      },
+                      textStyle: AppText.dmSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+const String _micaPortfolioUrl = 'https://micajuliannadimatulac.github.io/portfolio/';
+
+void _openMicaPortfolio() {
+  html.window.open(_micaPortfolioUrl, '_blank');
+}
+
+class _DevelopedByFooter extends StatelessWidget {
+  const _DevelopedByFooter();
+
+  @override
+  Widget build(BuildContext context) {
+    final TextStyle labelStyle = AppText.dmSans(
+      fontSize: 10,
+      fontWeight: FontWeight.w600,
+      color: const Color(0xFF888888),
+    );
+    final TextStyle nameStyle = AppText.dmSans(
+      fontSize: 12,
+      fontWeight: FontWeight.w700,
+      color: const Color(0xFF888888),
+    );
+    final TextStyle linkStyle = nameStyle.copyWith(
+      decoration: TextDecoration.underline,
+      decorationColor: const Color(0xFF888888),
+    );
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'Developed by:',
+          textAlign: TextAlign.center,
+          style: labelStyle,
+        ),
+        const SizedBox(height: 3),
+        Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text('J. Casia & ', style: nameStyle),
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: _openMicaPortfolio,
+                child: Text('M. Dimatulac', style: linkStyle),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+
+
 class _ProjectsPanel extends StatelessWidget {
   const _ProjectsPanel({
     required this.selectedProgram,
@@ -2194,8 +3758,7 @@ class _ProjectsPanel extends StatelessWidget {
     required this.activities,
     required this.resetVersion,
     required this.onProjectSelected,
-    required this.onManageProjects,
-    required this.onManageActivities,
+    required this.onActivitySelected,
   });
 
   final String selectedProgram;
@@ -2204,8 +3767,7 @@ class _ProjectsPanel extends StatelessWidget {
   final List<_DashboardActivity> activities;
   final int resetVersion;
   final ValueChanged<int> onProjectSelected;
-  final VoidCallback onManageProjects;
-  final VoidCallback onManageActivities;
+  final ValueChanged<_DashboardActivity> onActivitySelected;
 
   @override
   Widget build(BuildContext context) {
@@ -2233,11 +3795,11 @@ class _ProjectsPanel extends StatelessWidget {
                     key: ValueKey('projects-$selectedProgram'),
                     title: '$selectedProgram Projects',
                     searchHint: 'Search project',
-                    manageButtonText: 'Manage Projects',
                     items: projects,
                     selectedIndex: selectedProjectIndex,
                     resetVersion: resetVersion,
                     getTitle: (project) => project.title,
+                    getDescription: (project) => project.description,
                     getPercent: (project) => project.percent,
                     onItemTap: (project) {
                       final int originalIndex = projects.indexOf(project);
@@ -2246,7 +3808,6 @@ class _ProjectsPanel extends StatelessWidget {
                         onProjectSelected(originalIndex);
                       }
                     },
-                    onManagePressed: onManageProjects,
                   ),
                 ),
                 const SizedBox(width: 26),
@@ -2260,14 +3821,13 @@ class _ProjectsPanel extends StatelessWidget {
                         ? '${projects[selectedProjectIndex].title} Activities'
                         : '$selectedProgram Activities',
                     searchHint: 'Search activity',
-                    manageButtonText: 'Manage Activities',
                     items: activities,
                     selectedIndex: -1,
                     resetVersion: resetVersion,
                     getTitle: (activity) => activity.title,
+                    getDescription: (activity) => activity.description,
                     getPercent: (activity) => activity.percent,
-                    onItemTap: (_) {},
-                    onManagePressed: onManageActivities,
+                    onItemTap: onActivitySelected,
                   ),
                 ),
               ],
@@ -2281,26 +3841,24 @@ class _SearchableProgressList<T> extends StatefulWidget {
     super.key,
     required this.title,
     required this.searchHint,
-    required this.manageButtonText,
     required this.items,
     required this.selectedIndex,
     required this.resetVersion,
     required this.getTitle,
+    required this.getDescription,
     required this.getPercent,
     required this.onItemTap,
-    required this.onManagePressed,
   });
 
   final String title;
   final String searchHint;
-  final String manageButtonText;
   final List<T> items;
   final int selectedIndex;
   final int resetVersion;
   final String Function(T item) getTitle;
+  final String Function(T item) getDescription;
   final int Function(T item) getPercent;
   final ValueChanged<T> onItemTap;
-  final VoidCallback onManagePressed;
 
   @override
   State<_SearchableProgressList<T>> createState() =>
@@ -2335,7 +3893,10 @@ class _SearchableProgressListState<T>
     final String searchText = _searchController.text.trim().toLowerCase();
 
     final List<T> filtered = widget.items.where((item) {
-      return widget.getTitle(item).toLowerCase().contains(searchText);
+      final String title = widget.getTitle(item).toLowerCase();
+      final String description = widget.getDescription(item).toLowerCase();
+
+      return title.contains(searchText) || description.contains(searchText);
     }).toList();
 
     filtered.sort((a, b) {
@@ -2381,19 +3942,6 @@ class _SearchableProgressListState<T>
                   fontWeight: FontWeight.w700,
                   color: AppColors.blue,
                 ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            AuthButton(
-              text: widget.manageButtonText,
-              width: 150,
-              height: 32,
-              type: AuthButtonType.dashboardFilled,
-              onTap: widget.onManagePressed,
-              textStyle: AppText.dmSans(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
               ),
             ),
           ],
@@ -2536,6 +4084,7 @@ class _SearchableProgressListState<T>
 
                       return _ProgressListTile(
                         title: widget.getTitle(item),
+                        description: widget.getDescription(item),
                         percent: widget.getPercent(item),
                         selected: originalIndex == widget.selectedIndex,
                         onTap: () {
@@ -2626,12 +4175,14 @@ class _ProgressStatusIndicator extends StatelessWidget {
 class _ProgressListTile extends StatelessWidget {
   const _ProgressListTile({
     required this.title,
+    required this.description,
     required this.percent,
     required this.onTap,
     this.selected = false,
   });
 
   final String title;
+  final String description;
   final int percent;
   final VoidCallback onTap;
   final bool selected;
@@ -2643,10 +4194,12 @@ class _ProgressListTile extends StatelessWidget {
       clampedPercent,
     );
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 82,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+        height: 104,
         padding: const EdgeInsets.symmetric(horizontal: 18),
         decoration: BoxDecoration(
           color: selected
@@ -2703,6 +4256,17 @@ class _ProgressListTile extends StatelessWidget {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 5),
+                  Text(
+                    description,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.dmSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
+                      color: const Color(0xFF777777),
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(20),
@@ -2725,6 +4289,7 @@ class _ProgressListTile extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

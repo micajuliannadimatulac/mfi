@@ -1,9 +1,167 @@
+import 'dart:html' as html;
+
 import 'package:flutter/material.dart';
 import '../state/blocked_users_state.dart';
 import '../state/sidebar_state.dart';
 import '../styles/app_styles.dart';
 import '../styles/settings_styles.dart';
 import '../widgets/auth_buttons.dart';
+
+
+Future<void> _showLogoutConfirmation(BuildContext context) async {
+  final bool? confirmed = await showDialog<bool>(
+    context: context,
+    barrierColor: Colors.black.withOpacity(0.35),
+    builder: (context) {
+      return const _LogoutConfirmationDialog();
+    },
+  );
+
+  if (confirmed != true || !context.mounted) {
+    return;
+  }
+
+  Navigator.pushNamedAndRemoveUntil(
+    context,
+    '/',
+    (route) => false,
+  );
+}
+
+
+
+class _LogoutConfirmationDialog extends StatelessWidget {
+  const _LogoutConfirmationDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(28, 26, 28, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Log Out',
+                style: AppText.calSans(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.blue,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Are you sure you want to log out?',
+                style: AppText.dmSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF4A4A4A),
+                ),
+              ),
+              const SizedBox(height: 26),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: Text(
+                      'Cancel',
+                      style: AppText.dmSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.placeholderGray,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 112,
+                    height: 38,
+                    child: AuthButton(
+                      text: 'Log Out',
+                      width: 112,
+                      height: 38,
+                      type: AuthButtonType.dashboardFilled,
+                      onTap: () => Navigator.pop(context, true),
+                      textStyle: AppText.dmSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+const String _micaPortfolioUrl = 'https://micajuliannadimatulac.github.io/portfolio/';
+
+void _openMicaPortfolio() {
+  html.window.open(_micaPortfolioUrl, '_blank');
+}
+
+class _DevelopedByFooter extends StatelessWidget {
+  const _DevelopedByFooter();
+
+  @override
+  Widget build(BuildContext context) {
+    final TextStyle labelStyle = AppText.dmSans(
+      fontSize: 10,
+      fontWeight: FontWeight.w600,
+      color: const Color(0xFF888888),
+    );
+    final TextStyle nameStyle = AppText.dmSans(
+      fontSize: 12,
+      fontWeight: FontWeight.w700,
+      color: const Color(0xFF888888),
+    );
+    final TextStyle linkStyle = nameStyle.copyWith(
+      decoration: TextDecoration.underline,
+      decorationColor: const Color(0xFF888888),
+    );
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'Developed by:',
+          textAlign: TextAlign.center,
+          style: labelStyle,
+        ),
+        const SizedBox(height: 3),
+        Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text('J. Casia & ', style: nameStyle),
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: _openMicaPortfolio,
+                child: Text('M. Dimatulac', style: linkStyle),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+
 
 enum _AccountSortOrder { az, za }
 
@@ -16,6 +174,9 @@ class SettingsAdminScreen extends StatefulWidget {
 
 class _SettingsAdminScreenState extends State<SettingsAdminScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+
+  bool _headerHasBackground = false;
 
   String _selectedFilter = 'All';
   _AccountSortOrder _sortOrder = _AccountSortOrder.az;
@@ -61,11 +222,27 @@ class _SettingsAdminScreenState extends State<SettingsAdminScreen> {
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_handleHeaderBackground);
     BlockedUsersState.reload();
+  }
+
+  void _handleHeaderBackground() {
+    final bool shouldShow = _scrollController.hasClients &&
+        _scrollController.offset > 0.5;
+
+    if (shouldShow == _headerHasBackground) {
+      return;
+    }
+
+    setState(() {
+      _headerHasBackground = shouldShow;
+    });
   }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_handleHeaderBackground);
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -139,12 +316,19 @@ class _SettingsAdminScreenState extends State<SettingsAdminScreen> {
                     Expanded(
                       child: SafeArea(
                         child: CustomScrollView(
+                          controller: _scrollController,
                           slivers: [
                             SliverPersistentHeader(
                               pinned: true,
                               delegate: _StickyHeaderDelegate(
                                 child: Container(
-                                  color: Colors.transparent,
+                                  decoration: _headerHasBackground
+                                      ? const BoxDecoration(
+                                          gradient: AppGradients.authBackground,
+                                        )
+                                      : const BoxDecoration(
+                                          color: Colors.transparent,
+                                        ),
                                   padding:
                                       const EdgeInsets.fromLTRB(48, 28, 48, 26),
                                   child: Center(
@@ -261,39 +445,30 @@ class _SettingsAdminScreenState extends State<SettingsAdminScreen> {
                 Navigator.pushReplacementNamed(context, '/dashboard-admin'),
           ),
           _sidebarItem(
+            icon: Icons.folder_open_rounded,
+            label: 'Projects',
+            selected: false,
+            isExpanded: isExpanded,
+            onTap: () =>
+                Navigator.pushReplacementNamed(context, '/projects-admin'),
+          ),
+          _sidebarItem(
               icon: Icons.person,
               label: 'Account Settings',
               selected: true,
               isExpanded: isExpanded,
               onTap: () {}),
-          _sidebarItem(
-              icon: Icons.wb_sunny_outlined,
-              label: 'Dark/Light Mode',
-              selected: false,
-              isExpanded: isExpanded,
-              onTap: () {}),
+          _themeToggleItem(isExpanded: isExpanded),
           _sidebarItem(
             icon: Icons.logout_rounded,
             label: 'Log Out',
             selected: false,
             isExpanded: isExpanded,
-            onTap: () => Navigator.pushNamedAndRemoveUntil(
-                context, '/', (route) => false),
+            onTap: () => _showLogoutConfirmation(context),
           ),
           if (isExpanded) ...[
             const Spacer(),
-            Text('Created by:',
-                textAlign: TextAlign.center,
-                style: AppText.dmSans(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF888888))),
-            Text('- Julianne & Mica -',
-                textAlign: TextAlign.center,
-                style: AppText.dmSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF888888))),
+            const _DevelopedByFooter(),
             const SizedBox(height: 28),
           ],
         ],
@@ -307,6 +482,61 @@ class _SettingsAdminScreenState extends State<SettingsAdminScreen> {
       child: GestureDetector(
         onTap: SidebarState.toggle,
         child: const Icon(Icons.menu_rounded, size: 34, color: AppColors.blue),
+      ),
+    );
+  }
+
+
+  Widget _themeToggleItem({required bool isExpanded}) {
+    return Container(
+      width: double.infinity,
+      height: 78,
+      padding: EdgeInsets.symmetric(horizontal: isExpanded ? 28 : 0),
+      child: Row(
+        mainAxisAlignment:
+            isExpanded ? MainAxisAlignment.start : MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.wb_sunny_outlined,
+            size: 28,
+            color: AppColors.blue,
+          ),
+          if (isExpanded) ...[
+            const SizedBox(width: 18),
+            Expanded(
+              child: Text(
+                'Dark/Light Mode',
+                overflow: TextOverflow.ellipsis,
+                style: SettingsStyles.sidebarLabel,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              width: 46,
+              height: 24,
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE2E8F0),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: const Color(0xFFCBD5E1),
+                  width: 1,
+                ),
+              ),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  width: 18,
+                  height: 18,
+                  decoration: const BoxDecoration(
+                    color: AppColors.blue,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -417,7 +647,7 @@ class _SettingsAdminScreenState extends State<SettingsAdminScreen> {
         child: DropdownButton<String>(
           value: _selectedFilter,
           isExpanded: true,
-          icon: const Icon(Icons.filter_alt_rounded,
+          icon: const Icon(Icons.keyboard_arrow_down_rounded,
               color: AppColors.blue, size: 22),
           style: SettingsStyles.dropdownText,
           dropdownColor: Colors.white,
@@ -440,7 +670,7 @@ class _SettingsAdminScreenState extends State<SettingsAdminScreen> {
         child: DropdownButton<_AccountSortOrder>(
           value: _sortOrder,
           isExpanded: true,
-          icon: const Icon(Icons.swap_vert_rounded,
+          icon: const Icon(Icons.keyboard_arrow_down_rounded,
               color: AppColors.blue, size: 22),
           style: SettingsStyles.dropdownText,
           dropdownColor: Colors.white,
