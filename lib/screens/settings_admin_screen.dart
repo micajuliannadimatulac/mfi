@@ -24,8 +24,15 @@ class _SettingsAdminScreenState extends State<SettingsAdminScreen> {
   final List<String> _filterOptions = const ['All', 'Active', 'Blocked'];
 
   final List<_AccountUser> _users = [
-    const _AccountUser('Julianne Marie M. Casia', 'jmmcasia@addu.edu.ph',
-        'OJT Intern', 'https://i.pravatar.cc/150?img=1'),
+    const _AccountUser(
+      'Julianne Marie M. Casia',
+      'jmmcasia@addu.edu.ph',
+      'OJT Intern',
+      'https://i.pravatar.cc/150?img=1',
+      username: 'Jcasia10',
+      contactNumber: '0968 440 9623',
+      program: 'KMI',
+    ),
     const _AccountUser('Mica Julianna Dimatulac', 'mjdimatulac@addu.edu.ph',
         'OJT Intern', 'https://i.pravatar.cc/150?img=5'),
     const _AccountUser('Tristan Jay Sintos', 'tjsintos@addu.edu.ph',
@@ -63,12 +70,20 @@ class _SettingsAdminScreenState extends State<SettingsAdminScreen> {
     super.dispose();
   }
 
-  void _showEditUserMessage(_AccountUser user) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Edit user: ${user.name}'),
-        behavior: SnackBarBehavior.floating,
-      ),
+  void _openEditUser(_AccountUser user) {
+    Navigator.pushNamed(
+      context,
+      '/settings-admin-edit',
+      arguments: <String, dynamic>{
+        'name': user.name,
+        'email': user.email,
+        'role': user.role,
+        'position': user.role,
+        'photoUrl': user.photoUrl,
+        'username': user.username,
+        'contactNumber': user.contactNumber,
+        'program': user.program,
+      },
     );
   }
 
@@ -529,7 +544,7 @@ class _SettingsAdminScreenState extends State<SettingsAdminScreen> {
                       width: 82,
                       height: 26,
                       type: AuthButtonType.dashboardFilled,
-                      onTap: () => _showEditUserMessage(user),
+                      onTap: () => _openEditUser(user),
                       textStyle: SettingsStyles.buttonText,
                     ),
                   ],
@@ -586,13 +601,24 @@ class _SettingsAdminScreenState extends State<SettingsAdminScreen> {
 }
 
 class _AccountUser {
-  const _AccountUser(this.name, this.email, this.role, this.photoUrl,
-      {this.isBlocked = false});
+  const _AccountUser(
+    this.name,
+    this.email,
+    this.role,
+    this.photoUrl, {
+    this.username = '',
+    this.contactNumber = '',
+    this.program = 'KMI',
+    this.isBlocked = false,
+  });
 
   final String name;
   final String email;
   final String role;
   final String photoUrl;
+  final String username;
+  final String contactNumber;
+  final String program;
   final bool isBlocked;
 
   String get initials {
@@ -611,12 +637,18 @@ class _AccountUser {
       String? email,
       String? role,
       String? photoUrl,
+      String? username,
+      String? contactNumber,
+      String? program,
       bool? isBlocked}) {
     return _AccountUser(
       name ?? this.name,
       email ?? this.email,
       role ?? this.role,
       photoUrl ?? this.photoUrl,
+      username: username ?? this.username,
+      contactNumber: contactNumber ?? this.contactNumber,
+      program: program ?? this.program,
       isBlocked: isBlocked ?? this.isBlocked,
     );
   }
